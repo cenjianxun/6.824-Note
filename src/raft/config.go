@@ -8,20 +8,24 @@ package raft
 // test with the original before submitting.
 //
 
-import "6.824/labgob"
-import "6.824/labrpc"
-import "bytes"
-import "log"
-import "sync"
-import "sync/atomic"
-import "testing"
-import "runtime"
-import "math/rand"
-import crand "crypto/rand"
-import "math/big"
-import "encoding/base64"
-import "time"
-import "fmt"
+import (
+	"bytes"
+	"log"
+	"math/rand"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"6.824/labgob"
+	"6.824/labrpc"
+
+	crand "crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"math/big"
+	"time"
+)
 
 func randstring(n int) string {
 	b := make([]byte, 2*n)
@@ -70,10 +74,11 @@ func make_config(t *testing.T, n int, unreliable bool, snapshot bool) *config {
 		rand.Seed(makeSeed())
 	})
 	runtime.GOMAXPROCS(4)
+
 	cfg := &config{}
 	cfg.t = t
 	cfg.net = labrpc.MakeNetwork()
-	cfg.n = n
+	cfg.n = n // server的个数
 	cfg.applyErr = make([]string, cfg.n)
 	cfg.rafts = make([]*Raft, cfg.n)
 	cfg.connected = make([]bool, cfg.n)
@@ -142,7 +147,7 @@ func (cfg *config) checkLogs(i int, m ApplyMsg) (string, bool) {
 	v := m.Command
 	for j := 0; j < len(cfg.logs); j++ {
 		if old, oldok := cfg.logs[j][m.CommandIndex]; oldok && old != v {
-			log.Printf("%v: log %v; server %v\n", i, cfg.logs[i], cfg.logs[j])
+			//log.Printf("%v: log %v; server %v\n", i, cfg.logs[i], cfg.logs[j])
 			// some server has already committed a different value for this entry!
 			err_msg = fmt.Sprintf("commit index=%v server=%v %v != server=%v %v",
 				m.CommandIndex, i, m.Command, j, old)
@@ -340,11 +345,14 @@ func (cfg *config) checkTimeout() {
 	}
 }
 
+//【原子的】接受一个*int32类型的指针值，并会返回该指针值指向的那个值
+// 在这里读取value的值的同时，当前计算机中的任何CPU都不会进行其它的针对此值的读或写操作
 func (cfg *config) checkFinished() bool {
 	z := atomic.LoadInt32(&cfg.finished)
 	return z != 0
 }
 
+// 把raft里的所有server都删掉
 func (cfg *config) cleanup() {
 	atomic.StoreInt32(&cfg.finished, 1)
 	for i := 0; i < len(cfg.rafts); i++ {
@@ -429,20 +437,33 @@ func (cfg *config) setlongreordering(longrel bool) {
 //
 // try a few times in case re-elections are needed.
 //
+// check当前是否只有一个leader
 func (cfg *config) checkOneLeader() int {
 	for iters := 0; iters < 10; iters++ {
 		ms := 450 + (rand.Int63() % 100)
 		time.Sleep(time.Duration(ms) * time.Millisecond)
-
+		var dis []int
+		var con []string
 		leaders := make(map[int][]int)
 		for i := 0; i < cfg.n; i++ {
+
 			if cfg.connected[i] {
-				if term, leader := cfg.rafts[i].GetState(); leader {
+				term, leader := cfg.rafts[i].GetState()
+				if leader {
 					leaders[term] = append(leaders[term], i)
 				}
+				cfg.rafts[i].mu.Lock()
+				s := fmt.Sprintf("%d-%d-%s-len(%d)", term, cfg.rafts[i].me, cfg.rafts[i].state, len(cfg.rafts[i].logs))
+				//log.Printf("抽查%s", s)
+				con = append(con, s)
+				//}
+				cfg.rafts[i].mu.Unlock()
+			} else {
+				dis = append(dis, i)
 			}
-		}
 
+		}
+		log.Printf("抽查:leader%v, 在%v, 失联%v", leaders, con, dis)
 		lastTermWithLeader := -1
 		for term, leaders := range leaders {
 			if len(leaders) > 1 {
@@ -493,6 +514,7 @@ func (cfg *config) checkNoLeader() {
 }
 
 // how many servers think a log entry is committed?
+// 有多少的server认为日志已经提交，看有多少个log是存在的
 func (cfg *config) nCommitted(index int) (int, interface{}) {
 	count := 0
 	var cmd interface{} = nil
@@ -604,7 +626,9 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 		} else {
 			time.Sleep(50 * time.Millisecond)
 		}
+		//cfg.checkOneLeader()
 	}
+	// 到这里的意思是超过了10s
 	if cfg.checkFinished() == false {
 		cfg.t.Fatalf("one(%v) failed to reach agreement", cmd)
 	}

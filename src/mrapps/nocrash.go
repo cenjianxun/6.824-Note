@@ -6,13 +6,17 @@ package main
 // go build -buildmode=plugin nocrash.go
 //
 
-import "6.824/mr"
-import crand "crypto/rand"
-import "math/big"
-import "strings"
-import "os"
-import "sort"
-import "strconv"
+import (
+	crand "crypto/rand"
+	"fmt"
+	"math/big"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+
+	"6.824/mr"
+)
 
 func maybeCrash() {
 	max := big.NewInt(1000)
@@ -31,6 +35,7 @@ func Map(filename string, contents string) []mr.KeyValue {
 	kva = append(kva, mr.KeyValue{"b", strconv.Itoa(len(filename))})
 	kva = append(kva, mr.KeyValue{"c", strconv.Itoa(len(contents))})
 	kva = append(kva, mr.KeyValue{"d", "xyzzy"})
+	fmt.Printf("file: %s, %d", filename, len(filename))
 	return kva
 }
 

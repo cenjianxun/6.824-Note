@@ -66,7 +66,7 @@ failed_any=0
 
 # generate the correct output
 ../mrsequential ../../mrapps/wc.so ../pg*txt || exit 1
-sort mr-out-0 > mr-correct-wc.txt
+sort mr-out > mr-correct-wc.txt
 rm -f mr-out*
 
 echo '***' Starting wc test.
@@ -106,7 +106,7 @@ rm -f mr-*
 
 # generate the correct output
 ../mrsequential ../../mrapps/indexer.so ../pg*txt || exit 1
-sort mr-out-0 > mr-correct-indexer.txt
+sort mr-out > mr-correct-indexer.txt
 rm -f mr-out*
 
 echo '***' Starting indexer test.
@@ -272,7 +272,7 @@ echo '***' Starting crash test.
 
 # generate the correct output
 ../mrsequential ../../mrapps/nocrash.so ../pg*txt || exit 1
-sort mr-out-0 > mr-correct-crash.txt
+sort mr-out > mr-correct-crash.txt
 rm -f mr-out*
 
 rm -f mr-done

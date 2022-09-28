@@ -18,6 +18,9 @@ import "strconv"
 // and look only at the contents argument. The return value is a slice
 // of key/value pairs.
 //
+// map程序，每个输入文件都执行一次
+// 共有两个参数。arg0 是文件名，arg1 是文件内容
+// 返回是key/value对的切片集合
 func Map(filename string, contents string) []mr.KeyValue {
 	// function to detect word separators.
 	ff := func(r rune) bool { return !unicode.IsLetter(r) }
@@ -38,6 +41,8 @@ func Map(filename string, contents string) []mr.KeyValue {
 // map tasks, with a list of all the values created for that key by
 // any map task.
 //
+// reduce：所有map任务生成的中间结果集会作为reduce的入参被执行一次
+// 参数key是单词，value是出现次数的集合
 func Reduce(key string, values []string) string {
 	// return the number of occurrences of this word.
 	return strconv.Itoa(len(values))
